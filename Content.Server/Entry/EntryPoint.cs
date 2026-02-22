@@ -168,6 +168,7 @@ using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 using Robust.Shared.Utility;
 using Content.Server._CorvaxGoob.TTS;
+using Content.Server._CorvaxGoob.GuideGenerator;
 
 namespace Content.Server.Entry
 {
@@ -274,6 +275,24 @@ namespace Content.Server.Entry
                 file = resourceManager.UserData.OpenWriteText(resPath.WithName("react_" + dest));
                 ReactionJsonGenerator.PublishJson(file);
                 file.Flush();
+                // Corvax-Wiki-Start
+                file = resourceManager.UserData.OpenWriteText(resPath.WithName("entity_" + dest));
+                EntityJsonGenerator.PublishJson(file);
+                file.Flush();
+                file = resourceManager.UserData.OpenWriteText(resPath.WithName("loc.json"));
+                LocJsonGenerator.PublishJson(file);
+                file.Flush();
+                file = resourceManager.UserData.OpenWriteText(resPath.WithName("prototype.json"));
+                PrototypeListGenerator.PublishJson(file);
+                file.Flush();
+                file = resourceManager.UserData.OpenWriteText(resPath.WithName("component.json"));
+                ComponentListGenerator.PublishJson(file);
+                file.Flush();
+                PrototypeJsonGenerator.PublishAll(resourceManager, new ResPath("prototype").ToRootedPath());
+                file.Flush();
+                ComponentJsonGenerator.PublishAll(resourceManager, new ResPath("component").ToRootedPath());
+                file.Flush();
+                // Corvax-Wiki-End
                 IoCManager.Resolve<IBaseServer>().Shutdown("Data generation done");
             }
             else
