@@ -1,3 +1,6 @@
+using Robust.Shared.Localization;
+using Robust.Shared.Prototypes;
+
 namespace Content.Server._CorvaxGoob.GuideGenerator;
 
 public sealed class TextTools
@@ -9,17 +12,39 @@ public sealed class TextTools
     /// <returns>String with capitalized first letter</returns>
     public static string CapitalizeString(string str)
     {
-        if (str.Length > 1)
+        return str.Length switch
         {
-            return char.ToUpper(str[0]) + str.Remove(0, 1);
-        }
-        else if (str.Length == 1)
+            > 1 => char.ToUpper(str[0]) + str.Remove(0, 1),
+            1 => char.ToUpper(str[0]).ToString(),
+            _ => str
+        };
+    }
+
+    public static string GetDisplayName(EntityPrototype proto, IPrototypeManager prototypeManager, ILocalizationManager loc)
+    {
+        foreach (var (id, parentProto) in prototypeManager.EnumerateAllParents<EntityPrototype>(proto.ID, includeSelf: true))
         {
-            return char.ToUpper(str[0]).ToString();
+            if (parentProto == null)
+                continue;
+
+            var name = parentProto?.Name ?? loc.GetEntityData(id).Name;
+            if (!string.IsNullOrEmpty(name))
+                return name;
         }
-        else
+        return proto.Name;
+    }
+
+    public static string? GetEditorSuffix(EntityPrototype proto, IPrototypeManager prototypeManager, ILocalizationManager loc)
+    {
+        foreach (var (id, parentProto) in prototypeManager.EnumerateAllParents<EntityPrototype>(proto.ID, includeSelf: true))
         {
-            return str;
+            if (parentProto == null)
+                continue;
+
+            var suffix = parentProto?.EditorSuffix ?? loc.GetEntityData(id).Suffix;
+            if (!string.IsNullOrEmpty(suffix))
+                return suffix;
         }
+        return proto.EditorSuffix;
     }
 }
