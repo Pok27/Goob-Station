@@ -386,7 +386,8 @@ jobs:
             content=$(printf "%s" "$page_json" | jq -r \
               ".query.pages | to_entries[0].value.revisions[0].slots.main[\"*\"] // \"\"")
 
-            if printf "%s" "$content" | grep -q "${warning%}}"; then
+            if printf "%s" "$content" | grep -Fq "$warning"; then
+              echo "Skipping (already has warning): $title"
               exit 0
             fi
 
