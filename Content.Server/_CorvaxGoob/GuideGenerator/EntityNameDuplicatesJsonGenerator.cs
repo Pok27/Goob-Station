@@ -70,7 +70,7 @@ public static class EntityNameDuplicatesJsonGenerator
 
                     if (!string.IsNullOrEmpty(label) &&
                         !string.IsNullOrEmpty(suffix) &&
-                        label.Equals(suffix, StringComparison.OrdinalIgnoreCase))
+                        label.Trim().Equals(suffix.Trim(), StringComparison.OrdinalIgnoreCase))
                     {
                         suffix = string.Empty;
                     }

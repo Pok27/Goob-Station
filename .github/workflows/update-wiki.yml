@@ -301,16 +301,16 @@ jobs:
             )
 
             while IFS='|' read -r name id; do
-              [[ -z "${name:-}" ]] && continue
+              [[ -z "Goob:${name:-}" ]] && continue
               [[ -z "${id:-}" ]] && continue
 
-              if grep -Fxq "$name" <<< "$existing_titles"; then
-                echo "Skipping existing page: $name"
+              if grep -Fxq "Goob:$name" <<< "$existing_titles"; then
+                echo "Skipping existing page: Goob:$name"
                 continue
               fi
 
               content="{{сущность|$id}}"
-              echo "Creating page: $name → $id"
+              echo "Creating page: Goob:$name → $id"
 
               curl -sS -b "$cookiejar" \
                 --data-urlencode "action=edit" \

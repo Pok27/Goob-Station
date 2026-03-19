@@ -27,7 +27,7 @@ public static class ComponentJsonGenerator
 
             foreach (var (compName, entry) in entProto.Components)
             {
-                var node = ser.WriteValueAs<MappingDataNode>(entry.Component.GetType(), entry.Component);
+                var node = entry.Mapping.Copy();
                 FieldEntry.NormalizeFlagsToSequences(entry.Component, node);
                 var compFields = FieldEntry.DataNodeToObject(node);
 
