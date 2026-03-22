@@ -286,13 +286,18 @@ jobs:
           for ((i=0; i<${#pages[@]}; i+=batch_size)); do
             batch=("${pages[@]:i:batch_size}")
 
-            titles=$(printf '%s\n' "${batch[@]}" | cut -d'|' -f1 | paste -sd'|' -)
+            titles=$(
+              printf '%s\n' "${batch[@]}" |
+              cut -d'|' -f1 |
+              sed 's/^/Goob:/' |
+              paste -sd'|' -
+            )
 
             existing_titles=$(
               curl -sS -b "$cookiejar" \
                 --data-urlencode "action=query" \
                 --data-urlencode "format=json" \
-                --data-urlencode "titles=Goob:$titles" \
+                --data-urlencode "titles=$titles" \
                 "$API" | jq -r '
                   .query.pages[]
                   | select(.missing != true)
@@ -301,7 +306,7 @@ jobs:
             )
 
             while IFS='|' read -r name id; do
-              [[ -z "Goob:${name:-}" ]] && continue
+              [[ -z "${name:-}" ]] && continue
               [[ -z "${id:-}" ]] && continue
 
               if grep -Fxq "Goob:$name" <<< "$existing_titles"; then
