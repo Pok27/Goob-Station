@@ -292,7 +292,7 @@ jobs:
               curl -sS -b "$cookiejar" \
                 --data-urlencode "action=query" \
                 --data-urlencode "format=json" \
-                --data-urlencode "titles=$titles" \
+                --data-urlencode "titles=Goob:$titles" \
                 "$API" | jq -r '
                   .query.pages[]
                   | select(.missing != true)

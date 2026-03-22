@@ -25,10 +25,13 @@ public static class ComponentJsonGenerator
             if (p is not EntityPrototype entProto)
                 continue;
 
-            foreach (var (compName, entry) in entProto.Components)
+            var composedComponents = YAMLEntry.GetComposedComponentMappings(entProto, proto, ser, compFactory);
+
+            foreach (var (compName, node) in composedComponents)
             {
-                var node = entry.Mapping.Copy();
-                FieldEntry.NormalizeFlagsToSequences(entry.Component, node);
+                if (entProto.Components.TryGetValue(compName, out var entry))
+                    FieldEntry.NormalizeFlagsToSequences(entry.Component, node);
+
                 var compFields = FieldEntry.DataNodeToObject(node);
 
                 if (!output.TryGetValue(compName, out var map))

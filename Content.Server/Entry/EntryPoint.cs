@@ -288,6 +288,8 @@ namespace Content.Server.Entry
                 WriteFile("entity_project.json", EntityProjectGenerator.PublishJson); // Corvax-Wiki-Project
                 WriteFile("entity_name_wiki.json", file => WikiEntityNameGenerator.PublishJson(file, resourceManager, resPath));
                 WriteFile("entity_name_duplicates.json", EntityNameDuplicatesJsonGenerator.PublishDuplicatesJson);
+                WriteFile("sprite_entity.json", SpriteEntityJsonGenerator.PublishIncludedJson);
+                WriteFile("sprite_entity_other.json", SpriteEntityJsonGenerator.PublishExcludedJson);
                 PrototypeJsonGenerator.PublishAll(resourceManager, new ResPath("prototype").ToRootedPath());
                 ComponentJsonGenerator.PublishAll(resourceManager, new ResPath("component").ToRootedPath());
                 // Corvax-Wiki-End

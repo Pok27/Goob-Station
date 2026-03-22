@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Robust.Shared.ContentPack;
@@ -39,6 +40,9 @@ public static class PrototypeJsonGenerator
             object? defaultObj = null;
             try
             {
+                if (HasUnsafeObjectDataField(kind))
+                    throw new InvalidOperationException($"Prototype kind '{kind.Name}' contains DataField members with type object.");
+
                 var instance = Activator.CreateInstance(kind);
                 if (instance != null)
                 {
@@ -75,5 +79,30 @@ public static class PrototypeJsonGenerator
             file.Write(JsonSerializer.Serialize(outObj, serializeOptions));
             file.Flush();
         }
+    }
+
+    private static bool HasUnsafeObjectDataField(Type type)
+    {
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        foreach (var field in type.GetFields(flags))
+        {
+            if (field.FieldType == typeof(object) &&
+                field.GetCustomAttributes(inherit: true).Any(attr => attr.GetType().Name is nameof(DataFieldAttribute) or nameof(IdDataFieldAttribute)))
+            {
+                return true;
+            }
+        }
+
+        foreach (var property in type.GetProperties(flags))
+        {
+            if (property.PropertyType == typeof(object) &&
+                property.GetCustomAttributes(inherit: true).Any(attr => attr.GetType().Name is nameof(DataFieldAttribute) or nameof(IdDataFieldAttribute)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

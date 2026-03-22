@@ -28,6 +28,12 @@ public static class EntityNameDuplicatesJsonGenerator
             .FirstOrDefault() ?? string.Empty;
     }
 
+    public static bool MatchesEntityNameFilter(EntityPrototype proto)
+    {
+        return !proto.Abstract &&
+               proto.Components.Values.Any(c => c.Component is FixturesComponent);
+    }
+
     private static Dictionary<string, List<string>> GetDuplicatesName(
         IPrototypeManager prototypeManager,
         bool duplicatesOnly)
@@ -37,9 +43,9 @@ public static class EntityNameDuplicatesJsonGenerator
         var loc = IoCManager.Resolve<ILocalizationManager>();
         return prototypeManager
             .EnumeratePrototypes<EntityPrototype>()
-            .Where(p => !p.Abstract &&
-                        allowedIds.Contains(p.ID) && // Corvax-Wiki-Project
-                        p.Components.Values.Any(c => c.Component is FixturesComponent))
+            .Where(p => MatchesEntityNameFilter(p) &&
+                        allowedIds.Contains(p.ID) // Corvax-Wiki-Project
+            )
             .GroupBy(p =>
             {
                 var name = TextTools.CapitalizeString(TextTools.GetDisplayName(p, prototypeManager, loc));
