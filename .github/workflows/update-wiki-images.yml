@@ -173,6 +173,10 @@ jobs:
           PASS="$(printf "%s" "$PASS" | tr -d '\r\n')"
           NAMESPACE="$(printf "%s" "$NAMESPACE" | tr -d '\r\n')"
 
+          if [[ -n "$NAMESPACE" && "${NAMESPACE: -1}" != "-" ]]; then
+            NAMESPACE="${NAMESPACE}-"
+          fi
+
           if [[ ! -d "$BASE" ]]; then
             echo "Entity image directory not found: $BASE"
             exit 1

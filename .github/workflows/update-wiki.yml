@@ -78,7 +78,7 @@ jobs:
 
           BASE="./bin/Content.Server/data"
           ROOT="${{ secrets.WIKI_PAGE_ROOT }}"
-          MODULE_ROOT="Модуль:IanComradeBot"
+          NAMESPACE="${{ secrets.WIKI_BOT_NAMESPACE }}"
           API="${{ secrets.WIKI_ROOT_URL }}/api.php"
           USER="${{ secrets.WIKI_BOT_USER }}"
           PASS="${{ secrets.WIKI_BOT_PASS }}"
@@ -87,6 +87,13 @@ jobs:
           USER="$(printf "%s" "$USER" | tr -d '\r\n')"
           PASS="$(printf "%s" "$PASS" | tr -d '\r\n')"
           ROOT="$(printf "%s" "$ROOT" | tr -d '\r\n' | sed 's/[[:space:]]*$//')"
+          NAMESPACE="$(printf "%s" "$NAMESPACE" | tr -d '\r\n')"
+
+          if [[ -n "$NAMESPACE" ]]; then
+            MODULE_PATH="Модуль:IanComradeBot/$NAMESPACE"
+          else
+            MODULE_PATH="Модуль:IanComradeBot"
+          fi
 
           cookiejar="$(mktemp)"
           trap 'rm -f "$cookiejar"' EXIT
@@ -258,6 +265,10 @@ jobs:
           USER="$(printf "%s" "$USER" | tr -d '\r\n')"
           PASS="$(printf "%s" "$PASS" | tr -d '\r\n')"
           NAMESPACE="$(printf "%s" "$NAMESPACE" | tr -d '\r\n')"
+
+          if [[ -n "$NAMESPACE" && "${NAMESPACE: -1}" != ":" ]]; then
+            NAMESPACE="${NAMESPACE}:"
+          fi
 
           cookiejar="$(mktemp)"
           trap 'rm -f "$cookiejar"' EXIT
