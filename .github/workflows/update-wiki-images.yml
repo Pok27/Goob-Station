@@ -208,8 +208,8 @@ jobs:
           page_text=$(cat <<'EOF'
           == Краткое описание ==
           {{Файл
-          |Id     = {{safesubst:#replaceset:{{subst:PAGENAME}}|/^(?:[^:]+:)?(.+?)(?:\.[^.]+)?$/=$1}}
-          |Проект = {{safesubst:#replaceset:{{subst:PAGENAME}}|/^(?:([^:]+):)?.*$/=\1}}
+          |Id     = {{safesubst:#replaceset:{{subst:PAGENAME}}|/^(?:[^-]+-)?(.+?)(?:\.[^.]+)?$/=$1}}
+          |Проект = {{safesubst:#replaceset:{{subst:PAGENAME}}|/^(?:([^-]+)-)?.*$/=\1}}
           }}
 
           == Лицензирование ==
