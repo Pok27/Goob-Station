@@ -242,7 +242,7 @@ jobs:
                 --data-urlencode "iiprop=timestamp" \
                 "$API" | jq -r '
                   .query.pages[]
-                  | select(.missing != true and (.imageinfo | type == "array"))
+                  | select(has("missing") | not and (.imageinfo | type == "array"))
                   | .title
                   | sub("^[^:]+:"; "")
                 '
