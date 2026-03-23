@@ -46,7 +46,7 @@ jobs:
       - name: Install Linux graphics dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa mesa-utils
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa mesa-utils libopenal1
 
       - name: Install Dependencies
         run: dotnet restore
@@ -166,12 +166,12 @@ jobs:
           API="${{ secrets.WIKI_ROOT_URL }}/api.php"
           USER="${{ secrets.WIKI_BOT_USER }}"
           PASS="${{ secrets.WIKI_BOT_PASS }}"
-          PROJECT="${{ secrets.WIKI_BOT_PROJECT }}"
+          NAMESPACE="${{ secrets.WIKI_BOT_NAMESPACE }}"
 
           API="$(printf "%s" "$API" | tr -d '\r\n' | sed 's/[[:space:]]*$//')"
           USER="$(printf "%s" "$USER" | tr -d '\r\n')"
           PASS="$(printf "%s" "$PASS" | tr -d '\r\n')"
-          PROJECT="$(printf "%s" "$PROJECT" | tr -d '\r\n')"
+          NAMESPACE="$(printf "%s" "$NAMESPACE" | tr -d '\r\n')"
 
           if [[ ! -d "$BASE" ]]; then
             echo "Entity image directory not found: $BASE"
@@ -225,8 +225,8 @@ jobs:
             titles=$(
               for file in "${batch_files[@]}"; do
                 filename="$(basename "$file")"
-                if [[ -n "$PROJECT" ]]; then
-                  printf 'File:%s%s\n' "$PROJECT" "$filename"
+                if [[ -n "$NAMESPACE" ]]; then
+                  printf 'File:%s%s\n' "$NAMESPACE" "$filename"
                 else
                   printf 'File:%s\n' "$filename"
                 fi
@@ -256,12 +256,12 @@ jobs:
                 continue
               fi
 
-              echo "Uploading File:${PROJECT}${filename}"
+              echo "Uploading File:${NAMESPACE}${filename}"
 
               curl -sS -b "$cookiejar" \
                 -F "action=upload" \
                 -F "createonly=true" \
-                -F "filename=${PROJECT}${filename}" \
+                -F "filename=${NAMESPACE}${filename}" \
                 -F "comment=Upload $filename via GitHub Actions" \
                 -F "text=$page_text" \
                 -F "token=$token" \

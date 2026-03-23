@@ -252,12 +252,12 @@ jobs:
           API="${{ secrets.WIKI_ROOT_URL }}/api.php"
           USER="${{ secrets.WIKI_BOT_USER }}"
           PASS="${{ secrets.WIKI_BOT_PASS }}"
-          PROJECT="${{ secrets.WIKI_BOT_PROJECT }}"
+          NAMESPACE="${{ secrets.WIKI_BOT_NAMESPACE }}"
 
           API="$(printf "%s" "$API" | tr -d '\r\n')"
           USER="$(printf "%s" "$USER" | tr -d '\r\n')"
           PASS="$(printf "%s" "$PASS" | tr -d '\r\n')"
-          PROJECT="$(printf "%s" "$PROJECT" | tr -d '\r\n')"
+          NAMESPACE="$(printf "%s" "$NAMESPACE" | tr -d '\r\n')"
 
           cookiejar="$(mktemp)"
           trap 'rm -f "$cookiejar"' EXIT
@@ -289,8 +289,8 @@ jobs:
             batch=("${pages[@]:i:batch_size}")
 
             prefix=""
-            if [[ -n "$PROJECT" ]]; then
-              prefix="$PROJECT"
+            if [[ -n "$NAMESPACE" ]]; then
+              prefix="$NAMESPACE"
             fi
 
             titles=$(
@@ -316,18 +316,18 @@ jobs:
               [[ -z "${name:-}" ]] && continue
               [[ -z "${id:-}" ]] && continue
 
-              if grep -Fxq "$PROJECT$name" <<< "$existing_titles"; then
-                echo "Skipping existing page: $PROJECT$name"
+              if grep -Fxq "$NAMESPACE$name" <<< "$existing_titles"; then
+                echo "Skipping existing page: $NAMESPACE$name"
                 continue
               fi
 
               content="{{сущность|$id}}"
-              echo "Creating page: $PROJECT$name → $id"
+              echo "Creating page: $NAMESPACE$name → $id"
 
               curl -sS -b "$cookiejar" \
                 --data-urlencode "action=edit" \
                 --data-urlencode "createonly=true" \
-                --data-urlencode "title=$PROJECT$name" \
+                --data-urlencode "title=$NAMESPACE$name" \
                 --data-urlencode "text=$content" \
                 --data-urlencode "summary=Create $id via GitHub Actions" \
                 --data-urlencode "token=$token" \
