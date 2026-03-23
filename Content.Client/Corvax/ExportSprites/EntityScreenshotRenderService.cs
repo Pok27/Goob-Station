@@ -347,6 +347,8 @@ public sealed class EntityScreenshotRenderService
 
     private sealed class EntityScreenshotRenderControl : Control
     {
+        private static readonly Color ExportBackgroundColor = new(128, 128, 128, 0);
+
         [Dependency] private readonly IEntityManager _entityManager = default!;
         [Dependency] private readonly ILogManager _logManager = default!;
         [Dependency] private readonly IResourceManager _resourceManager = default!;
@@ -394,7 +396,7 @@ public sealed class EntityScreenshotRenderService
                                 Angle.Zero,
                                 overrideDirection: result.Direction);
                         },
-                        null);
+                        ExportBackgroundColor);
 
                     if (!_resourceManager.UserData.IsDir(queued.OutputPath.Directory))
                         _resourceManager.UserData.CreateDir(queued.OutputPath.Directory);
