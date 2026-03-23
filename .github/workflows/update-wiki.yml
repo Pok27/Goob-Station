@@ -307,7 +307,7 @@ jobs:
                 --data-urlencode "titles=$titles" \
                 "$API" | jq -r '
                   .query.pages[]
-                  | select(.missing != true)
+                  | select(has("missing") | not)
                   | .title
                 '
             )
