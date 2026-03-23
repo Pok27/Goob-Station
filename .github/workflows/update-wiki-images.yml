@@ -255,7 +255,7 @@ jobs:
             for file in "${batch_files[@]}"; do
               filename="$(basename "$file")"
 
-              if grep -Fxq "File:${NAMESPACE}${filename}" <<< "$existing_files"; then
+              if grep -Fxq "$filename" <<< "$existing_files"; then
                 echo "Skipping existing file: $filename"
                 continue
               fi
