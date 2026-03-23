@@ -90,9 +90,9 @@ jobs:
           NAMESPACE="$(printf "%s" "$NAMESPACE" | tr -d '\r\n')"
 
           if [[ -n "$NAMESPACE" ]]; then
-            MODULE_PATH="Модуль:IanComradeBot/$NAMESPACE"
+            MODULE_ROOT="Модуль:IanComradeBot/$NAMESPACE"
           else
-            MODULE_PATH="Модуль:IanComradeBot"
+            MODULE_ROOT="Модуль:IanComradeBot"
           fi
 
           cookiejar="$(mktemp)"
