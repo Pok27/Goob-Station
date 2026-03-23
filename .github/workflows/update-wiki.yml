@@ -99,7 +99,11 @@ jobs:
           trap 'rm -f "$cookiejar"' EXIT
 
           login_token=$(curl -sS -c "$cookiejar" \
-            --data "action=query&meta=tokens&type=login&format=json" "$API" | jq -r '.query.tokens.logintoken')
+            --data-urlencode "action=query" \
+            --data-urlencode "meta=tokens" \
+            --data-urlencode "type=login" \
+            --data-urlencode "format=json" \
+            "$API" | jq -r '.query.tokens.logintoken')
 
           curl -sS -c "$cookiejar" -b "$cookiejar" \
             --data-urlencode "action=login" \
@@ -110,7 +114,10 @@ jobs:
             "$API" > /dev/null
 
           token=$(curl -sS -b "$cookiejar" \
-            --data "action=query&meta=tokens&format=json" "$API" | jq -r '.query.tokens.csrftoken')
+            --data-urlencode "action=query" \
+            --data-urlencode "meta=tokens" \
+            --data-urlencode "format=json" \
+            "$API" | jq -r '.query.tokens.csrftoken')
 
           edit_page_file() {
             local title="$1"
@@ -127,7 +134,7 @@ jobs:
               --data-urlencode "bot=true" \
               --data-urlencode "minor=true" \
               --data-urlencode "format=json" \
-              "$API" | jq -r '.edit.result // "null"'
+              "$API" | jq -r '.edit.result // .error.info // "null"'
           }
 
           edit_page() {
@@ -145,13 +152,13 @@ jobs:
               --data-urlencode "bot=true" \
               --data-urlencode "minor=true" \
               --data-urlencode "format=json" \
-              "$API" | jq -r '.edit.result // "null"'
+              "$API" | jq -r '.edit.result // .error.info // "null"'
           }
 
-          query_page_linecounts() {
+          query_page_texts() {
             local -n titles_ref=$1
-            local -n linecounts_ref=$2
-            linecounts_ref=()
+            local -n texts_ref=$2
+            texts_ref=()
 
             (( ${#titles_ref[@]} == 0 )) && return 0
 
@@ -170,21 +177,23 @@ jobs:
               --data-urlencode "titles=$titles" \
               "$API")
 
-            while IFS=$'\t' read -r title linecount; do
+            while IFS=$'\t' read -r title text; do
               [[ -z "${title:-}" ]] && continue
-              [[ -z "${linecount:-}" ]] && continue
-              linecounts_ref["$title"]="$linecount"
+              texts_ref["$title"]="$text"
             done < <(
               jq -r '
                 .query.pages[]
-                | [.title, ((.revisions[0].slots.main.content? // "")| split("\n")| length)]
+                | [
+                    .title,
+                    ((.revisions[0].slots.main.content? // "") | gsub("\r"; ""))
+                  ]
                 | @tsv
               ' <<< "$resp"
             )
           }
 
-          count_lines() {
-            awk 'END { print NR }'
+          normalize_file() {
+            sed 's/\r$//'
           }
 
           files=()
@@ -203,29 +212,28 @@ jobs:
             for file in "${batch_files[@]}"; do
               rel="${file#$BASE/}"
               rel="$(printf "%s" "$rel" | tr -d '\r\n' | sed 's/:/_/g')"
-              json_titles+=("$ROOT/$rel")
+              json_titles+=("$JSON_ROOT/$rel")
               module_titles+=("$MODULE_ROOT/$rel/data")
             done
 
-            declare -A json_lines=()
-            declare -A module_lines=()
+            declare -A json_texts=()
+            declare -A module_texts=()
 
-            query_page_linecounts json_titles json_lines
-            query_page_linecounts module_titles module_lines
+            query_page_texts json_titles json_texts
+            query_page_texts module_titles module_texts
 
             for file in "${batch_files[@]}"; do
               rel="${file#$BASE/}"
               rel="$(printf "%s" "$rel" | tr -d '\r\n' | sed 's/:/_/g')"
 
-              json_title="$ROOT/$rel"
+              json_title="$JSON_ROOT/$rel"
               module_title="$MODULE_ROOT/$rel/data"
 
               echo "Processing $rel → $json_title"
 
-              local_lines=$(awk 'END { print NR }' "$file")
-              remote_lines="${json_lines[$json_title]:-}"
+              remote_text="${json_texts[$json_title]:-}"
 
-              if [[ -n "$remote_lines" && "$remote_lines" == "$local_lines" ]]; then
+              if diff -q <(normalize_file < "$file") <(printf '%s' "$remote_text" | normalize_file) >/dev/null; then
                 echo "Skipping unchanged page: $json_title"
               else
                 echo "Uploading $rel → $json_title"
@@ -233,11 +241,9 @@ jobs:
               fi
 
               lua_content=$'local loader = require("Module:JsonLoader")\nreturn loader.getFromTitle("'"$json_title"'")'
+              remote_module_text="${module_texts[$module_title]:-}"
 
-              local_lines=$(printf '%s' "$lua_content" | awk 'END { print NR }')
-              remote_lines="${module_lines[$module_title]:-}"
-
-              if [[ -n "$remote_lines" && "$remote_lines" == "$local_lines" ]]; then
+              if diff -q <(printf '%s' "$lua_content" | normalize_file) <(printf '%s' "$remote_module_text" | normalize_file) >/dev/null; then
                 echo "Skipping unchanged module: $module_title"
               else
                 echo "Creating/updating module → $module_title"
