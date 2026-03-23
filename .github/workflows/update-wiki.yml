@@ -212,7 +212,7 @@ jobs:
             for file in "${batch_files[@]}"; do
               rel="${file#$BASE/}"
               rel="$(printf "%s" "$rel" | tr -d '\r\n' | sed 's/:/_/g')"
-              json_titles+=("$JSON_ROOT/$rel")
+              json_titles+=("$ROOT/$rel")
               module_titles+=("$MODULE_ROOT/$rel/data")
             done
 
@@ -226,7 +226,7 @@ jobs:
               rel="${file#$BASE/}"
               rel="$(printf "%s" "$rel" | tr -d '\r\n' | sed 's/:/_/g')"
 
-              json_title="$JSON_ROOT/$rel"
+              json_title="$ROOT/$rel"
               module_title="$MODULE_ROOT/$rel/data"
 
               echo "Processing $rel → $json_title"

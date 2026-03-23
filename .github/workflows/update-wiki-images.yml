@@ -248,6 +248,7 @@ jobs:
                   .query.pages[]
                   | select(has("missing") | not and (.imageinfo | type == "array"))
                   | .title
+                  | sub("^[^:]+:"; "")
                 '
             )
 
