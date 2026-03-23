@@ -168,7 +168,7 @@ using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 using Robust.Shared.Utility;
 using Content.Server._CorvaxGoob.TTS;
-using Content.Server._CorvaxGoob.GuideGenerator;
+using Content.Server.Corvax.GuideGenerator;
 using System.IO;
 
 namespace Content.Server.Entry
@@ -284,12 +284,10 @@ namespace Content.Server.Entry
                 WriteFile("component.json", ComponentListGenerator.PublishJson);
                 WriteFile("prototype_store.json", PrototypeStoreGenerator.PublishJson);
                 WriteFile("component_store.json", ComponentStoreGenerator.PublishJson);
+                WriteFile("entity_project.json", EntityProjectGenerator.PublishJson);
                 WriteFile("entity_name.json", EntityNameDuplicatesJsonGenerator.PublishNameJson);
-                WriteFile("entity_project.json", EntityProjectGenerator.PublishJson); // Corvax-Wiki-Project
                 WriteFile("entity_name_wiki.json", file => WikiEntityNameGenerator.PublishJson(file, resourceManager, resPath));
                 WriteFile("entity_name_duplicates.json", EntityNameDuplicatesJsonGenerator.PublishDuplicatesJson);
-                WriteFile("sprite_entity.json", SpriteEntityJsonGenerator.PublishIncludedJson);
-                WriteFile("sprite_entity_other.json", SpriteEntityJsonGenerator.PublishExcludedJson);
                 PrototypeJsonGenerator.PublishAll(resourceManager, new ResPath("prototype").ToRootedPath());
                 ComponentJsonGenerator.PublishAll(resourceManager, new ResPath("component").ToRootedPath());
                 // Corvax-Wiki-End

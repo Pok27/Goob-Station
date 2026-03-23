@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 using Robust.Shared.ContentPack;
 using Robust.Shared.Utility;
 
-namespace Content.Server._CorvaxGoob.GuideGenerator;
+namespace Content.Server.Corvax.GuideGenerator;
 
 public static class LocJsonGenerator
 {

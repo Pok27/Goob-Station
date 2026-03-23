@@ -78,7 +78,7 @@ jobs:
 
           BASE="./bin/Content.Server/data"
           ROOT="${{ secrets.WIKI_PAGE_ROOT }}"
-          MODULE_ROOT="Модуль:IanComradeBot/Goob"
+          MODULE_ROOT="Модуль:IanComradeBot"
           API="${{ secrets.WIKI_ROOT_URL }}/api.php"
           USER="${{ secrets.WIKI_BOT_USER }}"
           PASS="${{ secrets.WIKI_BOT_PASS }}"
@@ -252,10 +252,12 @@ jobs:
           API="${{ secrets.WIKI_ROOT_URL }}/api.php"
           USER="${{ secrets.WIKI_BOT_USER }}"
           PASS="${{ secrets.WIKI_BOT_PASS }}"
+          PROJECT="${{ secrets.WIKI_BOT_PROJECT }}"
 
           API="$(printf "%s" "$API" | tr -d '\r\n')"
           USER="$(printf "%s" "$USER" | tr -d '\r\n')"
           PASS="$(printf "%s" "$PASS" | tr -d '\r\n')"
+          PROJECT="$(printf "%s" "$PROJECT" | tr -d '\r\n')"
 
           cookiejar="$(mktemp)"
           trap 'rm -f "$cookiejar"' EXIT
@@ -286,11 +288,16 @@ jobs:
           for ((i=0; i<${#pages[@]}; i+=batch_size)); do
             batch=("${pages[@]:i:batch_size}")
 
+            prefix=""
+            if [[ -n "$PROJECT" ]]; then
+              prefix="$PROJECT"
+            fi
+
             titles=$(
               printf '%s\n' "${batch[@]}" |
-              cut -d'|' -f1 |
-              sed 's/^/Goob:/' |
-              paste -sd'|' -
+                cut -d'|' -f1 |
+                awk -v p="$prefix" '{print p $0}' |
+                paste -sd'|' -
             )
 
             existing_titles=$(
@@ -309,18 +316,18 @@ jobs:
               [[ -z "${name:-}" ]] && continue
               [[ -z "${id:-}" ]] && continue
 
-              if grep -Fxq "Goob:$name" <<< "$existing_titles"; then
-                echo "Skipping existing page: Goob:$name"
+              if grep -Fxq "$PROJECT$name" <<< "$existing_titles"; then
+                echo "Skipping existing page: $PROJECT$name"
                 continue
               fi
 
               content="{{сущность|$id}}"
-              echo "Creating page: Goob:$name → $id"
+              echo "Creating page: $PROJECT$name → $id"
 
               curl -sS -b "$cookiejar" \
                 --data-urlencode "action=edit" \
                 --data-urlencode "createonly=true" \
-                --data-urlencode "title=Goob:$name" \
+                --data-urlencode "title=$PROJECT$name" \
                 --data-urlencode "text=$content" \
                 --data-urlencode "summary=Create $id via GitHub Actions" \
                 --data-urlencode "token=$token" \

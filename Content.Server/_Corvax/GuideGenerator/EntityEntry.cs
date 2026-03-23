@@ -6,7 +6,7 @@ using Robust.Shared.Serialization.Markdown.Mapping;
 using Robust.Shared.Serialization.Markdown.Sequence;
 using Robust.Shared.Serialization.Markdown.Value;
 
-namespace Content.Server._CorvaxGoob.GuideGenerator;
+namespace Content.Server.Corvax.GuideGenerator;
 
 public sealed class EntityEntry
 {

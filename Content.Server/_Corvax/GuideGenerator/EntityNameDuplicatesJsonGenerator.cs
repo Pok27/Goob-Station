@@ -2,11 +2,12 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Content.Shared.Corvax.GuideGenerator;
 using Content.Shared.Labels.Components;
 using Robust.Shared.Physics;
 using Robust.Shared.Prototypes;
 
-namespace Content.Server._CorvaxGoob.GuideGenerator;
+namespace Content.Server.Corvax.GuideGenerator;
 
 public static class EntityNameDuplicatesJsonGenerator
 {
@@ -28,24 +29,23 @@ public static class EntityNameDuplicatesJsonGenerator
             .FirstOrDefault() ?? string.Empty;
     }
 
-    public static bool MatchesEntityNameFilter(EntityPrototype proto)
+    public static bool MatchesEntityNameFilter(EntityPrototype proto, IReadOnlySet<string> allowedIds)
     {
+        var compFactory = IoCManager.Resolve<IComponentFactory>();
         return !proto.Abstract &&
-               proto.Components.Values.Any(c => c.Component is FixturesComponent);
+                proto.TryGetComponent<FixturesComponent>(out _, compFactory) &&
+                EntityProjectHelper.MatchesAllowedIds(proto.ID, allowedIds);
     }
 
     private static Dictionary<string, List<string>> GetDuplicatesName(
         IPrototypeManager prototypeManager,
         bool duplicatesOnly)
     {
-        var allowedIds = EntityProjectGenerator.GetProjectEntityIds(); // Corvax-Wiki-Project
-
         var loc = IoCManager.Resolve<ILocalizationManager>();
+        var allowedIds = EntityProjectGenerator.GetProjectEntityIds();
         return prototypeManager
             .EnumeratePrototypes<EntityPrototype>()
-            .Where(p => MatchesEntityNameFilter(p) &&
-                        allowedIds.Contains(p.ID) // Corvax-Wiki-Project
-            )
+            .Where(proto => MatchesEntityNameFilter(proto, allowedIds))
             .GroupBy(p =>
             {
                 var name = TextTools.CapitalizeString(TextTools.GetDisplayName(p, prototypeManager, loc));

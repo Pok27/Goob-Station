@@ -6,7 +6,7 @@ using Robust.Shared.Serialization.Manager;
 using Robust.Shared.Serialization.Markdown.Mapping;
 using Robust.Shared.Utility;
 
-namespace Content.Server._CorvaxGoob.GuideGenerator;
+namespace Content.Server.Corvax.GuideGenerator;
 
 public static class ComponentJsonGenerator
 {
@@ -27,10 +27,26 @@ public static class ComponentJsonGenerator
 
             var composedComponents = YAMLEntry.GetComposedComponentMappings(entProto, proto, ser, compFactory);
 
+            foreach (var (compName, entry) in entProto.Components)
+            {
+                var node = ser.WriteValueAs<MappingDataNode>(entry.Component.GetType(), entry.Component);
+                FieldEntry.NormalizeFlagsToSequences(entry.Component, node);
+
+                var compFields = FieldEntry.DataNodeToObject(node);
+
+                if (!output.TryGetValue(compName, out var map))
+                {
+                    map = new Dictionary<string, object?>();
+                    output[compName] = map;
+                }
+
+                map[entProto.ID] = compFields;
+            }
+
             foreach (var (compName, node) in composedComponents)
             {
-                if (entProto.Components.TryGetValue(compName, out var entry))
-                    FieldEntry.NormalizeFlagsToSequences(entry.Component, node);
+                if (entProto.Components.ContainsKey(compName))
+                    continue;
 
                 var compFields = FieldEntry.DataNodeToObject(node);
 
