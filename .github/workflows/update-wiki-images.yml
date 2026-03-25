@@ -135,9 +135,12 @@ jobs:
                   for frame_path in frames:
                       with Image.open(frame_path) as src:
                           img = src.convert("RGBA")
-                          canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
-                          canvas.paste(img, (0, 0), img)
-                          images.append(canvas)
+                          if img.size == canvas_size:
+                              images.append(img.copy())
+                          else:
+                              canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+                              canvas.paste(img, (0, 0))
+                              images.append(canvas)
 
                   first, *rest = images
                   first.save(

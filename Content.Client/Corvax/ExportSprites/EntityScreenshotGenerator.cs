@@ -1,6 +1,8 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Content.Shared.CCVar;
+using Content.Shared.Chemistry;
+using Content.Shared.Chemistry.Components.SolutionManager;
 using Content.Shared.Corvax.GuideGenerator;
 using Content.Client.Gameplay;
 using Robust.Client;
@@ -137,6 +139,8 @@ public sealed class EntityScreenshotGenerator
                     entity = _entityManager.SpawnEntity(proto.ID, new EntityCoordinates(previewGrid.Owner, default));
 
                     await WaitForEntityAppearanceAsync(entity);
+                    ApplyPrototypeAppearance(entity, proto);
+                    await WaitForEntityAppearanceAsync(entity, 1);
 
                     await _renderService.Export(entity, Direction.South, outputDir / $"{proto.ID}.png");
                     exported++;
@@ -192,17 +196,49 @@ public sealed class EntityScreenshotGenerator
 
     private async Task WaitForEntityAppearanceAsync(EntityUid entity)
     {
+        await WaitForEntityAppearanceAsync(entity, WarmupFrames);
+    }
+
+    private async Task WaitForEntityAppearanceAsync(EntityUid entity, uint frames)
+    {
         if (!_entityManager.TryGetComponent(entity, out MetaDataComponent? metadata))
             return;
 
         if (!metadata.EntityInitialized)
             _entityManager.InitializeAndStartEntity((entity, metadata), doMapInit: true);
 
-        var targetFrame = _gameTiming.CurFrame + WarmupFrames;
+        var targetFrame = _gameTiming.CurFrame + frames;
 
         while (_entityManager.EntityExists(entity) && _gameTiming.CurFrame < targetFrame)
         {
             await Task.Delay(1);
         }
+    }
+
+    private void ApplyPrototypeAppearance(EntityUid entity, EntityPrototype prototype)
+    {
+        if (!_entityManager.TryGetComponent(entity, out AppearanceComponent? appearance))
+            return;
+
+        if (!prototype.TryGetComponent<SolutionContainerManagerComponent>(out var manager, _entityManager.ComponentFactory) ||
+            manager.Solutions == null ||
+            manager.Solutions.Count == 0)
+        {
+            return;
+        }
+
+        var solutionEntry = manager.Solutions.FirstOrDefault(entry => entry.Value.Volume > 0);
+        if (string.IsNullOrEmpty(solutionEntry.Key))
+            solutionEntry = manager.Solutions.First();
+
+        var solution = solutionEntry.Value;
+        var appearanceSystem = _entitySystemManager.GetEntitySystem<SharedAppearanceSystem>();
+
+        appearanceSystem.SetData(entity, SolutionContainerVisuals.FillFraction, solution.FillFraction, appearance);
+        appearanceSystem.SetData(entity, SolutionContainerVisuals.Color, solution.GetColor(_prototypeManager), appearance);
+        appearanceSystem.SetData(entity, SolutionContainerVisuals.SolutionName, solutionEntry.Key, appearance);
+
+        if (solution.GetPrimaryReagentId() is { } reagent)
+            appearanceSystem.SetData(entity, SolutionContainerVisuals.BaseOverride, reagent.ToString(), appearance);
     }
 }
