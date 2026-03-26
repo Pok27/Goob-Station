@@ -183,7 +183,6 @@ jobs:
           normalize_wiki_title_part() {
             local title_part="$1"
             title_part="${title_part// /_}"
-            printf '%s' "${title_part^}"
           }
 
           if [[ ! -d "$BASE" ]]; then
