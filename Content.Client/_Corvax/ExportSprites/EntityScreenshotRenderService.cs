@@ -368,7 +368,7 @@ public sealed class EntityScreenshotRenderService
 
     private static int ToDelayMilliseconds(float seconds)
     {
-        return Math.Max(1, (int)MathF.Round(seconds * 1000f));
+        return Math.Max(1, (int) MathF.Round(seconds * 1000f));
     }
 
     private void WriteAnimationMetadata(ResPath animationDir, IReadOnlyList<AnimationFrameInfo> animationFrames)
@@ -437,7 +437,7 @@ public sealed class EntityScreenshotRenderService
 
     private static void BlitImage(
         Image<Rgba32> sourceImage,
-        Rectangle sourceRect,
+        PixelRect sourceRect,
         Color modulation,
         Span<Rgba32> destination,
         Vector2i destinationSize,
@@ -527,7 +527,7 @@ public sealed class EntityScreenshotRenderService
         SpriteComponent.Layer layer,
         Direction direction,
         out Image<Rgba32> image,
-        out Rectangle sourceRect)
+        out PixelRect sourceRect)
     {
         image = default!;
         sourceRect = default;
@@ -535,7 +535,7 @@ public sealed class EntityScreenshotRenderService
         if (layer.Texture != null)
         {
             image = GetTextureImage(layer.Texture);
-            sourceRect = new Rectangle(0, 0, image.Width, image.Height);
+            sourceRect = new PixelRect(0, 0, image.Width, image.Height);
             return true;
         }
 
@@ -580,7 +580,7 @@ public sealed class EntityScreenshotRenderService
         var target = (int) rsiDirection * framesPerDirection + frame;
         var targetY = target / statesX;
         var targetX = target % statesX;
-        sourceRect = new Rectangle(targetX * frameWidth, targetY * frameHeight, frameWidth, frameHeight);
+        sourceRect = new PixelRect(targetX * frameWidth, targetY * frameHeight, frameWidth, frameHeight);
         return true;
     }
 
@@ -604,6 +604,8 @@ public sealed class EntityScreenshotRenderService
         _textureImageCache[texture] = image;
         return image;
     }
+
+    private readonly record struct PixelRect(int Left, int Top, int Width, int Height);
 
     private sealed class EntityScreenshotRenderControl : Control
     {
