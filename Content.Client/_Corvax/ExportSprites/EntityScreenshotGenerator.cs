@@ -290,28 +290,40 @@ public sealed class EntityScreenshotGenerator
 
         foreach (var (_, entry) in prototype.Components)
         {
-            if (TryExtractSpriteSpecifier(entry.Mapping, out icon))
+            if (TryExtractSpriteSpecifier(entry.Component.GetType(), entry.Mapping, out icon))
                 return true;
         }
 
         return false;
     }
 
-    private bool TryExtractSpriteSpecifier(DataNode? node, out SpriteSpecifier? icon)
+    private bool TryExtractSpriteSpecifier(Type? expectedType, DataNode? node, out SpriteSpecifier? icon)
     {
         icon = null;
 
         if (node == null)
             return false;
 
-        if (TryParseSpriteSpecifier(node, out icon))
+        if (expectedType != null &&
+            typeof(SpriteSpecifier).IsAssignableFrom(expectedType) &&
+            TryParseSpriteSpecifier(node, out icon))
+        {
             return true;
+        }
 
         if (node is MappingDataNode mapping)
         {
-            foreach (var (_, child) in mapping.Children)
+            foreach (var (key, child) in mapping.Children)
             {
-                if (TryExtractSpriteSpecifier(child, out icon))
+                Type? childType = null;
+
+                if (expectedType != null &&
+                    _serialization.TryGetVariableType(expectedType, key, out var resolvedType))
+                {
+                    childType = resolvedType;
+                }
+
+                if (TryExtractSpriteSpecifier(childType, child, out icon))
                     return true;
             }
 
@@ -320,14 +332,30 @@ public sealed class EntityScreenshotGenerator
 
         if (node is SequenceDataNode sequence)
         {
+            var elementType = GetSequenceElementType(expectedType);
             foreach (var child in sequence.Sequence)
             {
-                if (TryExtractSpriteSpecifier(child, out icon))
+                if (TryExtractSpriteSpecifier(elementType, child, out icon))
                     return true;
             }
         }
 
         return false;
+    }
+
+    private static Type? GetSequenceElementType(Type? type)
+    {
+        if (type == null)
+            return null;
+
+        if (type.IsArray)
+            return type.GetElementType();
+
+        var genericArguments = type.GenericTypeArguments;
+        if (genericArguments.Length == 1)
+            return genericArguments[0];
+
+        return null;
     }
 
     private bool TryParseSpriteSpecifier(DataNode node, out SpriteSpecifier? icon)
