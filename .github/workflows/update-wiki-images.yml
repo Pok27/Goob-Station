@@ -435,6 +435,7 @@ jobs:
                 --data-urlencode "text=$page_text" \
                 --data-urlencode "summary=Initialize file description and license via GitHub Actions" \
                 --data-urlencode "token=$token" \
+                --data-urlencode "bot=true" \
                 --data-urlencode "format=json" \
                 "$API" | jq -r '.edit.result // .error.info // "null"' || true
             done
