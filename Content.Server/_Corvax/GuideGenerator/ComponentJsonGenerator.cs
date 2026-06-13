@@ -100,7 +100,14 @@ public static class ComponentJsonGenerator
                 }
                 finally
                 {
-                    entMan.DeleteEntity(uid);
+                    try
+                    {
+                        entMan.DeleteEntity(uid);
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
                 }
             }
 

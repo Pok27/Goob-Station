@@ -238,6 +238,9 @@ public static class FieldEntry
 
     private static bool CanSafelyInitializeMember(Type type, HashSet<Type> activeTypes)
     {
+        if (type == typeof(object))
+            return false;
+
         if (type == typeof(string) || IsConcreteCollectionLike(type))
             return true;
 
@@ -255,6 +258,9 @@ public static class FieldEntry
     {
         value = null;
         recurse = false;
+
+        if (type == typeof(object))
+            return false;
 
         if (type == typeof(string))
         {
