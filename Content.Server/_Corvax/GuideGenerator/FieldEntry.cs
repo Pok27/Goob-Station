@@ -141,85 +141,181 @@ public static class FieldEntry
 
     public static void EnsureFieldsCollectionsInitialized(object instance)
     {
+        if (CanSafelyInitializeDefault(instance, new HashSet<Type>()))
+            EnsureFieldsCollectionsInitializedUnchecked(instance);
+    }
+
+    private static void EnsureFieldsCollectionsInitializedUnchecked(object instance)
+    {
+        foreach (var member in GetWritableMembers(instance.GetType()))
+        {
+            try
+            {
+                if (GetMemberValue(member, instance) != null)
+                    continue;
+
+                if (!TryCreateDefaultValue(GetMemberType(member), out var created, out var recurse) || created == null)
+                    continue;
+
+                SetMemberValue(member, instance, created);
+
+                if (recurse)
+                    EnsureFieldsCollectionsInitializedUnchecked(created);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+    }
+
+    private static bool CanSafelyInitializeDefault(object instance, HashSet<Type> activeTypes)
+    {
         var type = instance.GetType();
+        if (!activeTypes.Add(type))
+            return false;
+
+        try
+        {
+            foreach (var member in GetWritableMembers(type))
+            {
+                try
+                {
+                    if (GetMemberValue(member, instance) != null)
+                        continue;
+
+                    if (!CanSafelyInitializeMember(GetMemberType(member), activeTypes))
+                        return false;
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            return true;
+        }
+        finally
+        {
+            activeTypes.Remove(type);
+        }
+    }
+
+    private static IEnumerable<MemberInfo> GetWritableMembers(Type type)
+    {
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-        // Fields
         foreach (var field in type.GetFields(flags))
         {
-            if (field.IsInitOnly)
-                continue;
-
-            try
-            {
-                var value = field.GetValue(instance);
-                if (value != null)
-                    continue;
-
-                var ft = field.FieldType;
-                if (ft == typeof(string))
-                {
-                    field.SetValue(instance, string.Empty);
-                }
-                else if ((typeof(IDictionary).IsAssignableFrom(ft) || typeof(IList).IsAssignableFrom(ft) || ft.IsGenericType && ft.GetGenericTypeDefinition() == typeof(List<>) || ft.IsArray) && ft is { IsAbstract: false, IsInterface: false })
-                {
-                    object? created = null;
-                    if (ft.IsArray)
-                    {
-                        var elemType = ft.GetElementType();
-                        if (elemType != null)
-                            created = Array.CreateInstance(elemType, 0);
-                    }
-                    else if (ft.GetConstructor(Type.EmptyTypes) != null)
-                    {
-                        created = Activator.CreateInstance(ft);
-                    }
-
-                    if (created != null)
-                        field.SetValue(instance, created);
-                }
-            }
-            catch
-            {
-                // ignore
-            }
+            if (!field.IsInitOnly)
+                yield return field;
         }
 
-        // Properties
         foreach (var prop in type.GetProperties(flags))
         {
-            if (!prop.CanWrite || prop.GetIndexParameters().Length != 0)
-                continue;
+            if (prop.CanWrite && prop.GetIndexParameters().Length == 0)
+                yield return prop;
+        }
+    }
 
-            try
+    private static Type GetMemberType(MemberInfo member)
+    {
+        return member is PropertyInfo prop ? prop.PropertyType : ((FieldInfo) member).FieldType;
+    }
+
+    private static object? GetMemberValue(MemberInfo member, object instance)
+    {
+        return member is PropertyInfo prop ? prop.GetValue(instance) : ((FieldInfo) member).GetValue(instance);
+    }
+
+    private static void SetMemberValue(MemberInfo member, object instance, object value)
+    {
+        if (member is PropertyInfo prop)
+            prop.SetValue(instance, value);
+        else
+            ((FieldInfo) member).SetValue(instance, value);
+    }
+
+    private static bool CanSafelyInitializeMember(Type type, HashSet<Type> activeTypes)
+    {
+        if (type == typeof(string) || IsConcreteCollectionLike(type))
+            return true;
+
+        if (type.IsClass && !type.IsAbstract)
+            return !activeTypes.Contains(type) && CanSafelyInitializeDefault(Activator.CreateInstance(type, true)!, activeTypes);
+
+        if (!type.IsAbstract && !type.IsInterface)
+            return true;
+
+        var concrete = FindConcreteAssignableType(type);
+        return concrete == null || !activeTypes.Contains(concrete) && CanSafelyInitializeDefault(Activator.CreateInstance(concrete)!, activeTypes);
+    }
+
+    private static bool TryCreateDefaultValue(Type type, out object? value, out bool recurse)
+    {
+        value = null;
+        recurse = false;
+
+        if (type == typeof(string))
+        {
+            value = string.Empty;
+            return true;
+        }
+
+        if (IsConcreteCollectionLike(type))
+        {
+            value = type.IsArray
+                ? Array.CreateInstance(type.GetElementType()!, 0)
+                : Activator.CreateInstance(type);
+            return value != null;
+        }
+
+        if (type.IsClass && !type.IsAbstract)
+        {
+            value = Activator.CreateInstance(type, true);
+            recurse = value != null;
+            return value != null;
+        }
+
+        if (!type.IsAbstract && !type.IsInterface)
+            return false;
+
+        var concrete = FindConcreteAssignableType(type);
+        if (concrete == null)
+            return false;
+
+        value = Activator.CreateInstance(concrete);
+        recurse = value != null;
+        return value != null;
+    }
+
+    private static bool IsConcreteCollectionLike(Type type)
+    {
+        return (typeof(IDictionary).IsAssignableFrom(type) ||
+                typeof(IList).IsAssignableFrom(type) ||
+                type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>) ||
+                type.IsArray) &&
+            type is { IsAbstract: false, IsInterface: false };
+    }
+
+    private static Type? FindConcreteAssignableType(Type target)
+    {
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var types = asm.GetTypes();
+
+            foreach (var t in types)
             {
-                var value = prop.GetValue(instance);
-                if (value != null)
+                if (t.IsAbstract || t.IsInterface)
                     continue;
-
-                var pt = prop.PropertyType;
-                if ((typeof(IDictionary).IsAssignableFrom(pt) || typeof(IList).IsAssignableFrom(pt) || pt.IsGenericType && pt.GetGenericTypeDefinition() == typeof(List<>) || pt.IsArray) && pt is { IsAbstract: false, IsInterface: false })
-                {
-                    object? created = null;
-                    if (pt.IsArray)
-                    {
-                        var elemType = pt.GetElementType();
-                        if (elemType != null)
-                            created = Array.CreateInstance(elemType, 0);
-                    }
-                    else if (pt.GetConstructor(Type.EmptyTypes) != null)
-                    {
-                        created = Activator.CreateInstance(pt);
-                    }
-
-                    if (created != null)
-                        prop.SetValue(instance, created);
-                }
-            }
-            catch
-            {
-                // ignore
+                if (!target.IsAssignableFrom(t))
+                    continue;
+                if (t.GetConstructor(Type.EmptyTypes) == null)
+                    continue;
+                return t;
             }
         }
+
+        return null;
     }
 }
