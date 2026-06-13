@@ -131,8 +131,7 @@ public static class PrototypeJsonGenerator
     {
         type = Nullable.GetUnderlyingType(type) ?? type;
 
-        if (type == typeof(object) ||
-            type == typeof(EntityUid) ||
+        if (type == typeof(EntityUid) ||
             type == typeof(NetEntity))
         {
             return true;

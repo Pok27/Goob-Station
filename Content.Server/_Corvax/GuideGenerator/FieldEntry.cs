@@ -178,28 +178,6 @@ public static class FieldEntry
                     if (created != null)
                         field.SetValue(instance, created);
                 }
-                else if (ft.IsClass && ft != typeof(string) && !ft.IsAbstract)
-                {
-                    var created = Activator.CreateInstance(ft, true);
-                    if (created != null)
-                    {
-                        field.SetValue(instance, created);
-                        EnsureFieldsCollectionsInitialized(created);
-                    }
-                }
-                else if ((ft.IsAbstract || ft.IsInterface) && ft != typeof(string))
-                {
-                    var concrete = FindConcreteAssignableType(ft);
-                    if (concrete != null)
-                    {
-                        var created = Activator.CreateInstance(concrete);
-                        if (created != null)
-                        {
-                            field.SetValue(instance, created);
-                            EnsureFieldsCollectionsInitialized(created);
-                        }
-                    }
-                }
             }
             catch
             {
@@ -237,54 +215,11 @@ public static class FieldEntry
                     if (created != null)
                         prop.SetValue(instance, created);
                 }
-                else if (pt.IsClass && pt != typeof(string) && !pt.IsAbstract)
-                {
-                    var created = Activator.CreateInstance(pt, true);
-                    if (created != null)
-                    {
-                        prop.SetValue(instance, created);
-                        EnsureFieldsCollectionsInitialized(created);
-                    }
-                }
-                else if ((pt.IsAbstract || pt.IsInterface) && pt != typeof(string))
-                {
-                    var concrete = FindConcreteAssignableType(pt);
-                    if (concrete != null)
-                    {
-                        var created = Activator.CreateInstance(concrete);
-                        if (created != null)
-                        {
-                            prop.SetValue(instance, created);
-                            EnsureFieldsCollectionsInitialized(created);
-                        }
-                    }
-                }
             }
             catch
             {
                 // ignore
             }
         }
-    }
-
-    private static Type? FindConcreteAssignableType(Type target)
-    {
-        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            var types = asm.GetTypes();
-
-            foreach (var t in types)
-            {
-                if (t.IsAbstract || t.IsInterface)
-                    continue;
-                if (!target.IsAssignableFrom(t))
-                    continue;
-                if (t.GetConstructor(Type.EmptyTypes) == null)
-                    continue;
-                return t;
-            }
-        }
-
-        return null;
     }
 }
