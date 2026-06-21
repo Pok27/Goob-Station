@@ -16,7 +16,7 @@ public sealed class EntityJsonGenerator
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    [JsonPropertyName("id")]
+    [JsonIgnore]
     public string Id { get; }
 
     [JsonPropertyName("name")]

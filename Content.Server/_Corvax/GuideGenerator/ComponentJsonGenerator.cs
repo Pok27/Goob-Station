@@ -45,17 +45,8 @@ public static class ComponentJsonGenerator
                     continue;
                 }
 
-                FieldEntry.NormalizeFlagsToSequences(entry.Component, node);
-
-                var compFields = FieldEntry.DataNodeToObject(node);
-
-                if (!output.TryGetValue(compName, out var map))
-                {
-                    map = new Dictionary<string, object?>();
-                    output[compName] = map;
-                }
-
-                map[entProto.ID] = compFields;
+                composedComponents.TryGetValue(compName, out var composedNode);
+                GetOrCreateEntry(output, compName)[entProto.ID] = FieldEntry.ProcessNode(entry.Component, node, composedNode);
             }
 
             foreach (var (compName, node) in composedComponents)
@@ -63,15 +54,7 @@ public static class ComponentJsonGenerator
                 if (entProto.Components.ContainsKey(compName))
                     continue;
 
-                var compFields = FieldEntry.DataNodeToObject(node);
-
-                if (!output.TryGetValue(compName, out var map))
-                {
-                    map = new Dictionary<string, object?>();
-                    output[compName] = map;
-                }
-
-                map[entProto.ID] = compFields;
+                GetOrCreateEntry(output, compName)[entProto.ID] = FieldEntry.DataNodeToObject(node);
             }
         }
 
@@ -80,47 +63,35 @@ public static class ComponentJsonGenerator
 
         foreach (var (compName, map) in output)
         {
-            // Determine default field for this component.
-            object? defaultObj = null;
-            if (compFactory.TryGetRegistration(compName, out var registration))
-            {
-                var uid = entMan.CreateEntityUninitialized(null);
-                try
-                {
-                    var compInstance = compFactory.GetComponent(registration.Type);
-                    FieldEntry.EnsureFieldsCollectionsInitialized(compInstance);
-                    entMan.AddComponent(uid, compInstance);
-                    var node = ser.WriteValueAs<MappingDataNode>(compInstance.GetType(), compInstance, true);
-                    FieldEntry.NormalizeFlagsToSequences(compInstance, node);
-                    defaultObj = FieldEntry.DataNodeToObject(node);
-                }
-                catch
-                {
-                    defaultObj = new Dictionary<string, object?>();
-                }
-                finally
-                {
-                    try
-                    {
-                        entMan.DeleteEntity(uid);
-                    }
-                    catch
-                    {
-                        // ignore
-                    }
-                }
-            }
-
-            var outObj = new Dictionary<string, object?>
-            {
-                ["default"] = defaultObj,
-                ["id"] = map
-            };
+            var defaultObj = FieldEntry.ComputeComponentDefault(compName, compFactory, entMan, ser);
+            var outObj = FieldEntry.DeduplicateAgainstDefault(defaultObj, map);
 
             res.UserData.CreateDir(destRoot);
-            var fileName = TextTools.DecapitalizeString(compName) + ".json";
-            using var stream = res.UserData.OpenWrite(destRoot / fileName);
-            JsonSerializer.Serialize(stream, outObj, SerializeOptions);
+            var directoryName = TextTools.CapitalizeString(compName);
+            var fileName = directoryName + ".json";
+            using (var stream = res.UserData.OpenWrite(destRoot / fileName))
+            {
+                JsonSerializer.Serialize(stream, outObj, SerializeOptions);
+            }
+
+            var componentRoot = destRoot / directoryName;
+            res.UserData.CreateDir(componentRoot);
+
+            using (var defaultStream = res.UserData.OpenWrite(componentRoot / "defaultFields.json"))
+            {
+                JsonSerializer.Serialize(defaultStream, defaultObj, SerializeOptions);
+            }
         }
+    }
+
+    private static Dictionary<string, object?> GetOrCreateEntry(
+        Dictionary<string, Dictionary<string, object?>> output, string key)
+    {
+        if (!output.TryGetValue(key, out var map))
+        {
+            map = new Dictionary<string, object?>();
+            output[key] = map;
+        }
+        return map;
     }
 }

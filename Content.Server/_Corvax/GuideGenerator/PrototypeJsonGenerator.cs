@@ -26,8 +26,7 @@ public static class PrototypeJsonGenerator
         foreach (var kind in proto.EnumeratePrototypeKinds().OrderBy(t => t.Name))
         {
             // The entity prototype has its own generator due to its size <see cref="EntityJsonGenerator"/>.
-            if (kind == typeof(EntityPrototype))
-                continue;
+            var isEntityPrototype = kind == typeof(EntityPrototype);
 
             if (HasUnsafeSerializedDataField(kind))
                 continue;
@@ -39,52 +38,42 @@ public static class PrototypeJsonGenerator
             {
                 var node = ser.WriteValueAs<MappingDataNode>(kind, p);
                 node.Remove("id");
-                map[p.ID] = FieldEntry.DataNodeToObject(node);
+                map[p.ID] = FieldEntry.ProcessNode(p, node);
             }
 
             if (map.Count == 0)
                 continue;
 
-            // Determine default field for this prototype.
-            object? defaultObj = null;
-            try
-            {
-                var instance = Activator.CreateInstance(kind);
-                if (instance != null)
-                {
-                    try
-                    {
-                        FieldEntry.EnsureFieldsCollectionsInitialized(instance);
-                        var defaultNode = ser.WriteValueAs<MappingDataNode>(kind, instance, true);
-                        defaultNode.Remove("id");
-                        FieldEntry.NormalizeFlagsToSequences(instance, defaultNode);
-                        defaultObj = FieldEntry.DataNodeToObject(defaultNode);
-                    }
-                    finally
-                    {
-                        if (instance is IDisposable disposable)
-                            disposable.Dispose();
-                    }
-                }
-            }
-            catch
-            {
-                defaultObj = new Dictionary<string, object?>();
-            }
-
-            var outObj = new Dictionary<string, object?>
-            {
-                ["default"] = defaultObj,
-                ["id"] = map
-            };
+            var defaultObj = FieldEntry.ComputePrototypeDefault(kind, ser);
+            var outObj = FieldEntry.DeduplicateAgainstDefault(defaultObj, map);
 
             res.UserData.CreateDir(destRoot);
             var kindName = proto.TryGetKindFrom(kind, out var actualKindName)
                 ? actualKindName
                 : kind.Name;
-            var fileName = TextTools.DecapitalizeString(kindName) + ".json";
-            using var stream = res.UserData.OpenWrite(destRoot / fileName);
-            JsonSerializer.Serialize(stream, outObj, SerializeOptions);
+            var directoryName = TextTools.CapitalizeString(kindName);
+
+            if (!isEntityPrototype)
+            {
+                var fileName = directoryName + ".json";
+                using var stream = res.UserData.OpenWrite(destRoot / fileName);
+                JsonSerializer.Serialize(stream, outObj, SerializeOptions);
+            }
+            else
+            {
+                var kindRoot = destRoot / directoryName;
+                res.UserData.CreateDir(kindRoot);
+
+                var entityMap = outObj.TryGetValue("id", out var idVal) && idVal is Dictionary<string, object?> em
+                    ? em
+                    : outObj;
+
+                foreach (var (id, fields) in entityMap)
+                {
+                    using var prototypeStream = res.UserData.OpenWrite(kindRoot / (id + ".json"));
+                    JsonSerializer.Serialize(prototypeStream, fields, SerializeOptions);
+                }
+            }
         }
     }
 
@@ -100,25 +89,9 @@ public static class PrototypeJsonGenerator
         if (!visited.Add(type))
             return false;
 
-        foreach (var field in type.GetFields(flags))
-        {
-            if (!HasDataField(field))
-                continue;
-
-            if (IsUnsafeSerializedType(field.FieldType, visited))
-                return true;
-        }
-
-        foreach (var property in type.GetProperties(flags))
-        {
-            if (!HasDataField(property))
-                continue;
-
-            if (IsUnsafeSerializedType(property.PropertyType, visited))
-                return true;
-        }
-
-        return false;
+        return type.GetFields(flags).Cast<MemberInfo>()
+            .Concat(type.GetProperties(flags))
+            .Any(m => HasDataField(m) && IsUnsafeSerializedType(FieldEntry.GetMemberType(m), visited));
     }
 
     private static bool HasDataField(MemberInfo member)
@@ -131,36 +104,20 @@ public static class PrototypeJsonGenerator
     {
         type = Nullable.GetUnderlyingType(type) ?? type;
 
-        if (type == typeof(EntityUid) ||
-            type == typeof(NetEntity))
-        {
+        if (type == typeof(EntityUid) || type == typeof(NetEntity))
             return true;
-        }
 
-        if (type.IsPrimitive ||
-            type.IsEnum ||
-            type == typeof(string) ||
-            type == typeof(decimal) ||
-            type == typeof(TimeSpan))
-        {
+        if (type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal) || type == typeof(TimeSpan))
             return false;
-        }
 
         if (type.IsArray)
             return IsUnsafeSerializedType(type.GetElementType()!, visited);
 
         if (type.IsGenericType)
-        {
-            foreach (var argument in type.GetGenericArguments())
-            {
-                if (IsUnsafeSerializedType(argument, visited))
-                    return true;
-            }
-        }
+            return type.GetGenericArguments().Any(arg => IsUnsafeSerializedType(arg, visited));
 
         return type.GetCustomAttributes(inherit: true)
-                   .Any(attr =>
-                   attr.GetType().Name is nameof(DataDefinitionAttribute) or nameof(SerializableAttribute))
+                   .Any(attr => attr.GetType().Name is nameof(DataDefinitionAttribute) or nameof(SerializableAttribute))
                 && HasUnsafeSerializedDataField(type, visited);
     }
 }
