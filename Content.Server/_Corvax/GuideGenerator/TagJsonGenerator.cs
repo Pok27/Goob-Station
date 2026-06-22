@@ -3,7 +3,6 @@ using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Content.Shared.Tag;
-using Content.Shared.Trigger.Components.Effects;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Serialization.Manager;
 using Robust.Shared.Serialization.Markdown.Mapping;
