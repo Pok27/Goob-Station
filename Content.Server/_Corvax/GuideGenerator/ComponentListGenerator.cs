@@ -17,7 +17,7 @@ public static class ComponentListGenerator
     {
         var proto = IoCManager.Resolve<IPrototypeManager>();
 
-        // Map: entity id -> list of component names.
+        // Map: component name -> list of entity ids.
         var output = new Dictionary<string, List<string>>();
 
         foreach (var p in proto.EnumeratePrototypes(typeof(EntityPrototype)))
@@ -25,19 +25,31 @@ public static class ComponentListGenerator
             if (p is not EntityPrototype entityProto)
                 continue;
 
-            var componentNames = new List<string>();
             foreach (var (compName, _) in entityProto.Components)
             {
-                componentNames.Add(compName);
+                GetOrCreateEntry(output, compName).Add(entityProto.ID);
             }
-
-            if (componentNames.Count > 0)
-                output[entityProto.ID] = componentNames;
         }
 
         if (output.Count == 0)
             return;
 
+        foreach (var ids in output.Values)
+        {
+            ids.Sort();
+        }
+
         JsonSerializer.Serialize(stream, output, SerializeOptions);
+    }
+
+    private static List<string> GetOrCreateEntry(Dictionary<string, List<string>> output, string key)
+    {
+        if (!output.TryGetValue(key, out var ids))
+        {
+            ids = new List<string>();
+            output[key] = ids;
+        }
+
+        return ids;
     }
 }

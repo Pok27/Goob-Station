@@ -1,5 +1,4 @@
 using System.IO;
-using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Content.Shared.Tag;
@@ -49,14 +48,32 @@ public static class TagJsonGenerator
             var composed = YAMLEntry.GetComposedComponentMappings(entProto, proto, ser, compFactory);
             ExtractTagsFromMapping(composed, "Tag", tags);
 
-            if (tags.Count > 0)
-                output[entProto.ID] = tags.OrderBy(t => t).ToList();
+            foreach (var tag in tags)
+            {
+                GetOrCreateEntry(output, tag).Add(entProto.ID);
+            }
         }
 
         if (output.Count == 0)
             return;
 
+        foreach (var ids in output.Values)
+        {
+            ids.Sort();
+        }
+
         JsonSerializer.Serialize(stream, output, SerializeOptions);
+    }
+
+    private static List<string> GetOrCreateEntry(Dictionary<string, List<string>> output, string key)
+    {
+        if (!output.TryGetValue(key, out var ids))
+        {
+            ids = new List<string>();
+            output[key] = ids;
+        }
+
+        return ids;
     }
 
     private static void ExtractTagsFromMapping(

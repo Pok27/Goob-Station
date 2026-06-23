@@ -21,7 +21,6 @@ public static class ComponentJsonGenerator
         var proto = IoCManager.Resolve<IPrototypeManager>();
         var ser = IoCManager.Resolve<ISerializationManager>();
         var compFactory = IoCManager.Resolve<IComponentFactory>();
-        var entMan = IoCManager.Resolve<IEntityManager>();
 
         // Map: component name -> (entity id -> component fields)
         var output = new Dictionary<string, Dictionary<string, object?>>();
@@ -35,15 +34,8 @@ public static class ComponentJsonGenerator
 
             foreach (var (compName, entry) in entProto.Components)
             {
-                MappingDataNode node;
-                try
-                {
-                    node = ser.WriteValueAs<MappingDataNode>(entry.Component.GetType(), entry.Component);
-                }
-                catch
-                {
+                if (!FieldEntry.TryWriteValueAsMapping(ser, entry.Component.GetType(), entry.Component, out var node))
                     continue;
-                }
 
                 composedComponents.TryGetValue(compName, out var composedNode);
                 GetOrCreateEntry(output, compName)[entProto.ID] = FieldEntry.ProcessNode(entry.Component, node, composedNode);
@@ -63,7 +55,7 @@ public static class ComponentJsonGenerator
 
         foreach (var (compName, map) in output)
         {
-            var defaultObj = FieldEntry.ComputeComponentDefault(compName, compFactory, entMan, ser);
+            var defaultObj = FieldEntry.ComputeComponentDefault(compName, compFactory, ser);
             var outObj = FieldEntry.DeduplicateAgainstDefault(defaultObj, map);
 
             res.UserData.CreateDir(destRoot);

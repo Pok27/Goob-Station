@@ -47,7 +47,9 @@ public static class FieldEntry
             try
             {
                 EnsureFieldsCollectionsInitialized(instance);
-                var node = ser.WriteValueAs<MappingDataNode>(kind, instance, true);
+                if (!TryWriteValueAsMapping(ser, kind, instance, out var node, true))
+                    return new Dictionary<string, object?>();
+
                 node.Remove("id");
                 NormalizeFlagsToSequences(instance, node);
                 return DataNodeToObject(node);
@@ -64,23 +66,24 @@ public static class FieldEntry
         }
     }
 
-    public static object? ComputeComponentDefault(string compName, IComponentFactory compFactory, IEntityManager entMan, ISerializationManager ser
+    public static object? ComputeComponentDefault(string compName, IComponentFactory compFactory, ISerializationManager ser
     )
     {
         if (!compFactory.TryGetRegistration(compName, out var registration))
             return null;
 
-        var uid = entMan.CreateEntityUninitialized(null);
         try
         {
             var compInstance = compFactory.GetComponent(registration.Type);
             EnsureFieldsCollectionsInitialized(compInstance);
-            entMan.AddComponent(uid, compInstance);
-            var node = ser.WriteValueAs<MappingDataNode>(
+            if (!TryWriteValueAsMapping(
+                    ser,
                 compInstance.GetType(),
                 compInstance,
-                true
-            );
+                    out var node,
+                    true))
+                return new Dictionary<string, object?>();
+
             NormalizeFlagsToSequences(compInstance, node);
             return DataNodeToObject(node);
         }
@@ -88,15 +91,30 @@ public static class FieldEntry
         {
             return new Dictionary<string, object?>();
         }
-        finally
+    }
+
+    public static bool TryWriteValueAsMapping(
+        ISerializationManager ser,
+        Type type,
+        object value,
+        out MappingDataNode node,
+        bool alwaysWrite = false)
+    {
+        try
         {
-            try
-            {
-                entMan.DeleteEntity(uid);
-            }
-            catch { }
+            node = ser.WriteValueAs<MappingDataNode>(type, value, alwaysWrite);
+            return true;
+        }
+        catch (InvalidOperationException e) when (IsMissingRuntimeTypeDataDefinition(e))
+        {
+            node = new MappingDataNode();
+            return false;
         }
     }
+
+    private static bool IsMissingRuntimeTypeDataDefinition(InvalidOperationException e) =>
+        e.Message.Contains("No data definition found", StringComparison.Ordinal) &&
+        e.Message.Contains("System.RuntimeType", StringComparison.Ordinal);
 
     public static Dictionary<string, object?> DeduplicateAgainstDefault(object? defaultObj, Dictionary<string, object?> map)
     {

@@ -36,7 +36,9 @@ public static class PrototypeJsonGenerator
 
             foreach (var p in proto.EnumeratePrototypes(kind))
             {
-                var node = ser.WriteValueAs<MappingDataNode>(kind, p);
+                if (!FieldEntry.TryWriteValueAsMapping(ser, kind, p, out var node))
+                    continue;
+
                 node.Remove("id");
                 map[p.ID] = FieldEntry.ProcessNode(p, node);
             }
