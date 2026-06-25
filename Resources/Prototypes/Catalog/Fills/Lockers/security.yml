@@ -129,6 +129,7 @@
     - id: Multitool # Goobstation
     - id: Wrench # Goobstation
     - id: ContrabandDetectorFlatpack # Goobstation
+      amount: 2 # CorvaxGoob: added amount, 1 > 2
     - id: SecurityMegaphone # goob - loudspeakers
     - id: SecApartmentTablet # CorvaxGoob-SecApartment
 
@@ -256,6 +257,7 @@
     - id: Betty # Goobstation
     - id: BoxTapeRecorder # DeltaV
     - id: PoliceBaton # Goobstation
+    - id: ObraDinnClock # Goobstation
     - id: PhotoCameraFilled # CorvaxGoob
     - id: ClothingOuterHardsuitDetective # CorvaxGoob Чтобы мапперам не пришлось перемапливать шкафы на те что со скафом
 
