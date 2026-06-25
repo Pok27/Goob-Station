@@ -22,6 +22,7 @@ public static class PrototypeJsonGenerator
     {
         var proto = IoCManager.Resolve<IPrototypeManager>();
         var ser = IoCManager.Resolve<ISerializationManager>();
+        var compFactory = IoCManager.Resolve<IComponentFactory>();
 
         foreach (var kind in proto.EnumeratePrototypeKinds().OrderBy(t => t.Name))
         {
@@ -40,7 +41,12 @@ public static class PrototypeJsonGenerator
                     continue;
 
                 node.Remove("id");
-                map[p.ID] = FieldEntry.ProcessNode(p, node);
+
+                var fields = FieldEntry.ProcessNode(p, node);
+                if (isEntityPrototype && p is EntityPrototype entProto)
+                    fields = ProcessEntityPrototype(entProto, proto, ser, compFactory, fields);
+
+                map[p.ID] = fields;
             }
 
             if (map.Count == 0)
@@ -82,6 +88,25 @@ public static class PrototypeJsonGenerator
     private static bool HasUnsafeSerializedDataField(Type type)
     {
         return HasUnsafeSerializedDataField(type, new HashSet<Type>());
+    }
+
+    private static object? ProcessEntityPrototype(
+        EntityPrototype entProto,
+        IPrototypeManager proto,
+        ISerializationManager ser,
+        IComponentFactory compFactory,
+        object? fields)
+    {
+        if (fields is not Dictionary<string, object?> fieldMap)
+            return fields;
+
+        var componentMap = ComponentJsonGenerator.BuildEntityComponentMap(entProto, proto, ser, compFactory);
+        if (componentMap.Count == 0)
+            fieldMap.Remove("components");
+        else
+            fieldMap["components"] = componentMap;
+
+        return fieldMap;
     }
 
     private static bool HasUnsafeSerializedDataField(Type type, HashSet<Type> visited)

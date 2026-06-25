@@ -30,23 +30,9 @@ public static class ComponentJsonGenerator
             if (p is not EntityPrototype entProto)
                 continue;
 
-            var composedComponents = YAMLEntry.GetComposedComponentMappings(entProto, proto, ser, compFactory);
-
-            foreach (var (compName, entry) in entProto.Components)
+            foreach (var (compName, componentFields) in BuildEntityComponentMap(entProto, proto, ser, compFactory))
             {
-                if (!FieldEntry.TryWriteValueAsMapping(ser, entry.Component.GetType(), entry.Component, out var node))
-                    continue;
-
-                composedComponents.TryGetValue(compName, out var composedNode);
-                GetOrCreateEntry(output, compName)[entProto.ID] = FieldEntry.ProcessNode(entry.Component, node, composedNode);
-            }
-
-            foreach (var (compName, node) in composedComponents)
-            {
-                if (entProto.Components.ContainsKey(compName))
-                    continue;
-
-                GetOrCreateEntry(output, compName)[entProto.ID] = FieldEntry.DataNodeToObject(node);
+                GetOrCreateEntry(output, compName)[entProto.ID] = componentFields;
             }
         }
 
@@ -85,5 +71,34 @@ public static class ComponentJsonGenerator
             output[key] = map;
         }
         return map;
+    }
+
+    public static Dictionary<string, object?> BuildEntityComponentMap(
+        EntityPrototype entProto,
+        IPrototypeManager proto,
+        ISerializationManager ser,
+        IComponentFactory compFactory)
+    {
+        var components = new Dictionary<string, object?>(StringComparer.Ordinal);
+        var composedComponents = YAMLEntry.GetComposedComponentMappings(entProto, proto, ser, compFactory);
+
+        foreach (var (compName, entry) in entProto.Components)
+        {
+            if (!FieldEntry.TryWriteValueAsMapping(ser, entry.Component.GetType(), entry.Component, out var node))
+                continue;
+
+            composedComponents.TryGetValue(compName, out var composedNode);
+            components[compName] = FieldEntry.ProcessNode(entry.Component, node, composedNode);
+        }
+
+        foreach (var (compName, node) in composedComponents)
+        {
+            if (entProto.Components.ContainsKey(compName))
+                continue;
+
+            components[compName] = FieldEntry.DataNodeToObject(node);
+        }
+
+        return components;
     }
 }
